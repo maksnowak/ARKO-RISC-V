@@ -112,7 +112,74 @@ getc:
 	mv	a4, a0	# Zapisana liczba wczytanych znaków
 	li	a3, 0	# Licznik przeczytanych plików
 	li	a5, 0	# Licznik linijek w pliku tekstowym
+pre_nextchar:
+	# £adowanie rejestrów tymczasowych potrzebnymi wartoœciami
+	li	t4, ':'	# Potrzebne do znajdowania etykiet
+	li	t5, '\n'	# Potrzebne do poprawnego wypisywania numeru wiersza z etykiet¹
+	li	t6, ' '	# Potrzebne do szukania pojedynczych s³ów
+new_line:
+	# Inkrementacja wartoœci aktualnej linijki pliku
+	addi	a5, a5, 1
+reset_file_buf_position:
+	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek
+	la	t0, file_buf
+reset_word_buf_position:
+	# Ustawianie wskaŸnika na bufor pliku na jego koniec
+	la	t2, word_buf
 nextchar:
+	# £adowanie kolejnego znaku z bufora
+	lbu	t1, (t0)
+	addi	t0, t0, 1
+	addi	a3, a3, 1
+	beq	t1, t6, reset_word_buf_position	# Jeœli znak jest spacj¹, ustaw wskaŸnik na pocz¹tek bufora s³owa
+	beq	t1, t5, reset_word_buf_position	# To samo dla znaku nowej linii
+	sb	t1, (t2)
+	addi	t2, t2, 1
+	bne	t1, t4, nextchar	# Czy znaleziono etykietê
+	sb	zero, -1(t2)
+	mv	s11, t0	# Zapamiêtaj pozycjê w buforze wejœciowym
+pre_check_label:
+	la	t0, label_buf
+reset_word:
+	la	t2, word_buf
+check_label:
+	# Sprawdzenie, czy etykieta w buforze
+	lbu	t1, (t0)
+	lbu	t3, (t2)
+	beqz	t1, pre_save_label
+	addi	t0, t0, 1
+	addi	t2, t2, 1
+	beq	t1, t3, check_label
+	bne	t2, zero, reset_word
+replace_label:
+	# Kod procedury bêdzie tutaj
+pre_save_label:
+	# Przesuñ wskaŸnik bufora s³owa na pocz¹tek
+	la	t2, word_buf
+save_label:
+	# Zapisz liczbê
+	lbu	t3, (t2)
+	sb	t3, (t0)
+	addi	t0, t0, 1
+	addi	t2, t2, 1
+	bnez	t3, save_label
+add_semicolon:
+	# Dodanie dwukropka
+	sb	t4, -1(t0)
+	mv	s10, t0
+	mv	t4, a5
+add_line_number:
+	# Dodanie numeru linijki pliku (numer bêdzie zapisany odwrotnie - cyfra jednoœci po lewej)
+	li	t6, 10	# Dzielnik
+	beqz	t4, reverse	# Jeœli dzielna bêdzie równa zero, odwróæ numer linijki
+	remu	t5, t4, t6	# Zapisz pojedyncz¹ cyfrê z linijki do rejestru
+	divu	t4, t4, t6	# Dzielenie ca³kowite przez 10
+add_character:
+	addi	t5, t5, '0'	# Zamieñ cyfrê na odpowiadaj¹cy kod ASCII
+	sb	t5, (t0)
+	addi	t0, t0, 1
+	b	add_line_number
+reverse:
 	# Kod procedury bêdzie tutaj
 end_of_file:
 	# Kod procedury bêdzie tutaj
