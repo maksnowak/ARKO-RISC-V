@@ -96,6 +96,26 @@ open_output:
 	li	a7, OPEN
 	ecall
 	mv	s1, a0	# Zapisz deskryptor pliku wyjœciowego do nowego rejestru
+getc:
+	# £adowanie do buforu fragmentu pliku o wielkoœci okreœlonej w sta³ej FILE_BUFSIZE
+	# Jeœli nie zosta³y odczytane wszystkie znaki z buforu, czytaj nastêpny znak
+	bne	a3, a4, nextchar
+	# £adowanie do buforu
+	mv	a0, s0
+	la	a1, file_buf
+	li	a2, FILE_BUFSIZE
+	li	a7, READ
+	ecall
+	# Jeœli liczba za³adowanych znaków wynosi 0, przejdŸ do procedury koñcz¹cej czytanie pliku
+	beqz	a0, end_of_file
+	# Za³aduj rejestry do sprawdzania, czy nale¿y za³adowaæ kolejn¹ czêœæ pliku
+	mv	a4, a0	# Zapisana liczba wczytanych znaków
+	li	a3, 0	# Licznik przeczytanych plików
+	li	a5, 0	# Licznik linijek w pliku tekstowym
+nextchar:
+	# Kod procedury bêdzie tutaj
+end_of_file:
+	# Kod procedury bêdzie tutaj
 fin:
 	# Zakoñczenie programu
 	li	a7, SYS_EXIT0
