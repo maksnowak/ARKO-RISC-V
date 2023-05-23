@@ -206,16 +206,17 @@ post_reverse:
 	mv	t0, s9
 	la	t2, word_buf
 put_label:
+	# Zapisz zmodyfikowan¹ zawartoœæ do bufora wyjœciowego
 	li	t1, ':'
 	lbu	t3, (t2)
-	sb	t3, (t0)
+	sb	t3, (t0)	# Zachowanie zawartoœci bufora ze s³owem
 	addi	t0, t0, 1
 	addi	t2, t2, 1
 	bne	t3, zero, put_label
-	sb	t1, -1(t0)
-	mv	t2, s11
+	sb	t1, -1(t0)	# Dopisanie dwukropka
+	mv	t2, s11	# Za³aduj pozycjê bufora wejœciowego
 	lbu	t1, (t2)
-	sb	t1, (t0)
+	sb	t1, (t0)	# Dodaj znak, który znajdowa³ siê po definicji etykiety
 	addi	t0, t0, 1
 	mv	s9, t0	# Zapamiêtaj adres buforu wyjœciowego
 	mv	t0, s11
