@@ -42,6 +42,7 @@ output_buf:	.space PATH_BUFSIZE
 file_buf:	.space FILE_BUFSIZE
 word_buf:	.space WORD_BUFSIZE
 label_buf:	.space LABEL_BUFSIZE
+result_buf:	.space FILE_BUFSIZE
 
 	.text
 main:
@@ -112,30 +113,34 @@ getc:
 	mv	a4, a0	# Zapisana liczba wczytanych znaków
 	li	a3, 0	# Licznik przeczytanych plików
 	li	a5, 0	# Licznik linijek w pliku tekstowym
-pre_nextchar:
+	la	s9, result_buf	# Ustaw wskaŸnik na bufor wyjœciowy
+	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek
+	la	t0, file_buf
+	# Inkrementacja wartoœci aktualnej linijki pliku
+	addi	a5, a5, 1
+	# Ustawianie wskaŸnika na bufor pliku na jego koniec
+	la	t2, word_buf
+new_line:
+	# Inkrementacja wartoœci aktualnej linijki pliku
+	addi	a5, a5, 1
+reset_word_buf_position:
+	# Ustawianie wskaŸnika na bufor pliku na jego koniec
+	la	t2, word_buf
+	b 	getc
+nextchar:
 	# £adowanie rejestrów tymczasowych potrzebnymi wartoœciami
 	li	t4, ':'	# Potrzebne do znajdowania etykiet
 	li	t5, '\n'	# Potrzebne do poprawnego wypisywania numeru wiersza z etykiet¹
 	li	t6, ' '	# Potrzebne do szukania pojedynczych s³ów
-new_line:
-	# Inkrementacja wartoœci aktualnej linijki pliku
-	addi	a5, a5, 1
-reset_file_buf_position:
-	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek
-	la	t0, file_buf
-reset_word_buf_position:
-	# Ustawianie wskaŸnika na bufor pliku na jego koniec
-	la	t2, word_buf
-nextchar:
 	# £adowanie kolejnego znaku z bufora
 	lbu	t1, (t0)
 	addi	t0, t0, 1
 	addi	a3, a3, 1
 	beq	t1, t6, reset_word_buf_position	# Jeœli znak jest spacj¹, ustaw wskaŸnik na pocz¹tek bufora s³owa
-	beq	t1, t5, reset_word_buf_position	# To samo dla znaku nowej linii
+	beq	t1, t5, new_line	# To samo dla znaku nowej linii
 	sb	t1, (t2)
 	addi	t2, t2, 1
-	bne	t1, t4, nextchar	# Czy znaleziono etykietê
+	bne	t1, t4, getc	# Czy znaleziono etykietê
 	sb	zero, -1(t2)
 	mv	s11, t0	# Zapamiêtaj pozycjê w buforze wejœciowym
 pre_check_label:
@@ -166,12 +171,12 @@ save_label:
 add_semicolon:
 	# Dodanie dwukropka
 	sb	t4, -1(t0)
-	mv	s10, t0
+	mv	s10, t0	# Zapamiêtanie adresu do powrotu przy odwracaniu numeru linijki
 	mv	t4, a5
 add_line_number:
 	# Dodanie numeru linijki pliku (numer bêdzie zapisany odwrotnie - cyfra jednoœci po lewej)
 	li	t6, 10	# Dzielnik
-	beqz	t4, reverse	# Jeœli dzielna bêdzie równa zero, odwróæ numer linijki
+	beqz	t4, pre_reverse	# Jeœli dzielna bêdzie równa zero, odwróæ numer linijki
 	remu	t5, t4, t6	# Zapisz pojedyncz¹ cyfrê z linijki do rejestru
 	divu	t4, t4, t6	# Dzielenie ca³kowite przez 10
 add_character:
@@ -179,8 +184,42 @@ add_character:
 	sb	t5, (t0)
 	addi	t0, t0, 1
 	b	add_line_number
+pre_reverse: 
+	addi	t0, t0, -1
 reverse:
-	# Kod procedury bêdzie tutaj
+	# Odwracanie numeru linijki do poprawnej wartoœci
+	mv	t2, s10
+	# Zamiana znaków miejscami
+	lbu	t1, (t0)
+	lbu	t3, (t2)
+	sb	t1, (t2)
+	sb	t3, (t0)
+	addi	t0, t0, -1
+	addi	t2, t2, 1
+	ble	t2, t0, reverse	# Jeœli rejestr id¹cy do przodu wskazuje na adres mniejszy ni¿ rejestr id¹cy do ty³u, kontynnuj zamianê miejscami 
+post_reverse:
+	# Dodaj znak spacji na koñcu zapisanego ci¹gu etykiety i numeru linijki
+	addi	t2, t2, 1
+	li	t3, ' '
+	sb	t3, (t2)
+	# Przygotuj rejestry do zapisywania do buforu wyjœciowego
+	mv	t0, s9
+	la	t2, word_buf
+put_label:
+	li	t1, ':'
+	lbu	t3, (t2)
+	sb	t3, (t0)
+	addi	t0, t0, 1
+	addi	t2, t2, 1
+	bne	t3, zero, put_label
+	sb	t1, -1(t0)
+	mv	t2, s11
+	lbu	t1, (t2)
+	sb	t1, (t0)
+	addi	t0, t0, 1
+	mv	s9, t0	# Zapamiêtaj adres buforu wyjœciowego
+	mv	t0, s11
+	b	getc
 end_of_file:
 	# Kod procedury bêdzie tutaj
 fin:
