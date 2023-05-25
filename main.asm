@@ -116,8 +116,6 @@ getc:
 	la	s9, result_buf	# Ustaw wskaŸnik na bufor wyjœciowy
 	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek
 	la	t0, file_buf
-	# Inkrementacja wartoœci aktualnej linijki pliku
-	addi	a5, a5, 1
 	# Ustawianie wskaŸnika na bufor pliku na jego koniec
 	la	t2, word_buf
 new_line:
@@ -141,26 +139,38 @@ nextchar:
 	sb	t1, (t2)
 	addi	t2, t2, 1
 	bne	t1, t4, getc	# Czy znaleziono etykietê
-	sb	zero, -1(t2)
 	mv	s11, t0	# Zapamiêtaj pozycjê w buforze wejœciowym
+	b	pre_save_label
+# Poni¿szy fragment kodu nie jest obecnie wykorzystywany i zostanie usuniêty
 pre_check_label:
-	la	t0, label_buf
+	# la	t0, label_buf
 reset_word:
-	la	t2, word_buf
+	# la	t2, word_buf
 check_label:
 	# Sprawdzenie, czy etykieta w buforze
-	lbu	t1, (t0)
-	lbu	t3, (t2)
-	beqz	t1, pre_save_label
-	addi	t0, t0, 1
-	addi	t2, t2, 1
-	beq	t1, t3, check_label
-	bne	t2, zero, reset_word
+	# lbu	t1, (t0)
+	# lbu	t3, (t2)
+	# beqz	t1, pre_save_label
+	# addi	t0, t0, 1
+	# addi	t2, t2, 1
+	# beq	t1, t3, check_label
+	# bne	t2, zero, reset_word
 replace_label:
 	# Kod procedury bêdzie tutaj
+# Koniec niewykorzystywanego fragmentu
 pre_save_label:
+	# Dodaj nulla na koniec s³owa w buforze
+	sb	zero, -1(t2)
+	# Ustaw wskaŸnik na bufor etykiet
+	la	t0, label_buf
 	# Przesuñ wskaŸnik bufora s³owa na pocz¹tek
 	la	t2, word_buf
+pre_save_loop:
+	# PrzejdŸ na koniec bufora etykiet
+	lbu	t1, (t0)
+	addi	t0, t0, 1
+	bnez	t1, pre_save_loop
+	addi	t0, t0, -1
 save_label:
 	# Zapisz liczbê
 	lbu	t3, (t2)
