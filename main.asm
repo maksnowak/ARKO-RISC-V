@@ -112,15 +112,15 @@ getc:
 	# Za³aduj rejestry do sprawdzania, czy nale¿y za³adowaæ kolejn¹ czêœæ pliku
 	mv	a4, a0	# Zapisana liczba wczytanych znaków
 	li	a3, 0	# Licznik przeczytanych plików
-	li	a5, 0	# Licznik linijek w pliku tekstowym
+	li	a5, 1	# Licznik linijek w pliku tekstowym
 	la	s9, result_buf	# Ustaw wskaŸnik na bufor wyjœciowy
 	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek
 	la	t0, file_buf
 	# Ustawianie wskaŸnika na bufor pliku na jego koniec
 	la	t2, word_buf
-new_line:
+# new_line:
 	# Inkrementacja wartoœci aktualnej linijki pliku
-	addi	a5, a5, 1
+	# addi	a5, a5, 1
 reset_word_buf_position:
 	# Ustawianie wskaŸnika na bufor pliku na jego koniec
 	la	t2, word_buf
@@ -134,12 +134,12 @@ nextchar:
 	lbu	t1, (t0)
 	addi	t0, t0, 1
 	addi	a3, a3, 1
-	beq	t1, t6, reset_word_buf_position	# Jeœli znak jest spacj¹, ustaw wskaŸnik na pocz¹tek bufora s³owa
-	beq	t1, t5, new_line	# To samo dla znaku nowej linii
+	mv	s11, t0	# Zapamiêtaj pozycjê w buforze wejœciowym
+	beq	t1, t6, put_space	# Jeœli znak jest spacj¹, dodaj go do buforu wyjœciowego
+	beq	t1, t5, put_new_line	# To samo dla znaku nowej linii
 	sb	t1, (t2)
 	addi	t2, t2, 1
 	bne	t1, t4, getc	# Czy znaleziono etykietê
-	mv	s11, t0	# Zapamiêtaj pozycjê w buforze wejœciowym
 	b	pre_save_label
 # Poni¿szy fragment kodu nie jest obecnie wykorzystywany i zostanie usuniêty
 pre_check_label:
@@ -224,13 +224,26 @@ put_label:
 	addi	t2, t2, 1
 	bne	t3, zero, put_label
 	sb	t1, -1(t0)	# Dopisanie dwukropka
-	mv	t2, s11	# Za³aduj pozycjê bufora wejœciowego
-	lbu	t1, (t2)
-	sb	t1, (t0)	# Dodaj znak, który znajdowa³ siê po definicji etykiety
+	mv	s9, t0	# Zapamiêtaj adres buforu wyjœciowego
+	mv	t0, s11	# Przywróæ adres buforu wejœciowego
+	b	getc
+put_space:
+	mv	t0, s9	# Za³aduj adres buforu wyjœciowego
+	li	t2, ' '
+	sb	t2, (t0)	# Dopisz spacjê
 	addi	t0, t0, 1
 	mv	s9, t0	# Zapamiêtaj adres buforu wyjœciowego
-	mv	t0, s11
-	b	getc
+	mv	t0, s11	# Przywróæ adres buforu wejœciowego
+	b	reset_word_buf_position
+put_new_line:
+	mv	t0, s9	# Za³aduj adres buforu wyjœciowego
+	li	t2, '\n'
+	sb	t2, (t0)	# Dopisz znak nowej linii
+	addi	t0, t0, 1
+	mv	s9, t0	# Zapamiêtaj adres buforu wyjœciowego
+	mv	t0, s11	# Przywróæ adres buforu wejœciowego
+	addi	a5, a5, 1
+	b	reset_word_buf_position
 end_of_file:
 	# Kod procedury bêdzie tutaj
 fin:
