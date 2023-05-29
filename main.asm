@@ -140,31 +140,38 @@ nextchar:
 	bne	t1, t4, getc	# Czy znaleziono etykietê
 	b	pre_save_label
 verify_space:
-	beqz	s8, put_space
-	sb	zero, (t2)
+	# Sprawdzanie, czy znak spacji jest poprzedzony s³owem
+	beqz	s8, put_space	# Jeœli d³ugoœæ s³owa wynosi 0, znak spacji wystêpuje samodzielnie i nale¿y go przepisaæ do bufora wyjœciowego
+	sb	zero, (t2)	# Dopisanie nulla na koniec s³owa w buforze
 	la	t0, label_buf
 	la	t2, word_buf
-	b	check_label
+	b	check_label	# PrzejdŸ do sprawdzania, czy s³owo jest etykiet¹
 verify_new_line:
-	addi	a5, a5, 1
-	beqz	s8, put_new_line
-	sb	zero, (t2)
+	# Sprawdzanie, czy znak nowej linii jest poprzedzony s³owem
+	addi	a5, a5, 1	# Inkrementacja wartoœci numeru linijki
+	beqz	s8, put_new_line	# Jeœli d³ugoœæ s³owa wynosi 0, znak nowej linii wystêpuje samodzielnie i nale¿y go przepisaæ do bufora wyjœciowego
+	sb	zero, (t2)	# Dopisanie nulla na koniec s³owa w buforze
 	la	t0, label_buf
 	la	t2, word_buf
 check_label:
 	# SprawdŸ, czy s³owo jest zdefiniowan¹ etykiet¹
 	lbu	t1, (t0)
 	lbu	t3, (t2)
-	beqz	t1, put_word
+	beqz	t1, put_word	# Jeœli w buforze etykiet wyst¹pi null, s³owo nie jest etykiet¹ i nale¿y je przepisaæ do bufora wyjœciowego
+	beqz	t3, verify_label	# Jeœli w buforze s³owa wyst¹pi null, nale¿y sprawdziæ, czy jest to definicja etykiety
 	addi	t0, t0, 1
 	addi	t2, t2, 1
-	beq	t3, t4, put_line_number
-	beq	t1, t3, check_label
+	beq	t1, t3, check_label	# Jeœli znaki w obu buforach siê zgadzaj¹, mo¿liwe, ¿e znaleziono etykietê
 next_label:
+	# Pêtla przechodz¹ca do nastêpnej definicji etykiety zapisanej w buforze
 	lbu	t1, (t0)
 	addi	t0, t0, 1
-	bne	t1, t6, next_label
-	b	check_label
+	bne	t1, t6, next_label	# Jeœli dotarliœmy do spacji, przestañ iterowaæ
+	la	t2, word_buf
+	b	check_label	# Powrót do sprawdzania, czy etykieta
+verify_label:
+	beq	t1, t4, put_line_number	# Jeœli w buforze etykiet jest dwukropek, jest to zdefiniowana wczeœniej etykieta i nale¿y przepisaæ numer linijki
+	b	next_label	# Jeœli nie, nie jest to etykieta, szukaj dalej
 pre_save_label:
 	# Dodaj nulla na koniec s³owa w buforze
 	sb	zero, -1(t2)
@@ -254,6 +261,7 @@ put_word_loop:
 	b	reset_word_buf_position
 put_line_number:
 	# Zapisz numer linijki etykiety do bufora wyjœciowego
+	addi	t0, t0, 1	# Nie zapisuj dwukropka
 	mv	t2, s9	# Za³aduj adres bufora wyjœciowego
 put_line_number_loop:
 	li	t3, ' '
