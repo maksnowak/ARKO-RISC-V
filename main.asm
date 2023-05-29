@@ -118,11 +118,8 @@ getc:
 	la	t0, file_buf
 	# Ustawianie wskaŸnika na bufor pliku na jego koniec
 	la	t2, word_buf
-# new_line:
-	# Inkrementacja wartoœci aktualnej linijki pliku
-	# addi	a5, a5, 1
 reset_word_buf_position:
-	# Ustawianie wskaŸnika na bufor pliku na jego koniec
+	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek
 	la	t2, word_buf
 	b 	getc
 nextchar:
@@ -135,29 +132,39 @@ nextchar:
 	addi	t0, t0, 1
 	addi	a3, a3, 1
 	mv	s11, t0	# Zapamiêtaj pozycjê w buforze wejœciowym
-	beq	t1, t6, put_space	# Jeœli znak jest spacj¹, dodaj go do buforu wyjœciowego
-	beq	t1, t5, put_new_line	# To samo dla znaku nowej linii
+	beq	t1, t6, verify_space	# Jeœli znak jest spacj¹, dodaj go do buforu wyjœciowego
+	beq	t1, t5, verify_new_line	# To samo dla znaku nowej linii
+	addi	s8, s8, 1
 	sb	t1, (t2)
 	addi	t2, t2, 1
 	bne	t1, t4, getc	# Czy znaleziono etykietê
 	b	pre_save_label
-# Poni¿szy fragment kodu nie jest obecnie wykorzystywany i zostanie usuniêty
-pre_check_label:
-	# la	t0, label_buf
-reset_word:
-	# la	t2, word_buf
+verify_space:
+	beqz	s8, put_space
+	sb	zero, (t2)
+	la	t0, label_buf
+	la	t2, word_buf
+	b	check_label
+verify_new_line:
+	addi	a5, a5, 1
+	beqz	s8, put_new_line
+	sb	zero, (t2)
+	la	t0, label_buf
+	la	t2, word_buf
 check_label:
-	# Sprawdzenie, czy etykieta w buforze
-	# lbu	t1, (t0)
-	# lbu	t3, (t2)
-	# beqz	t1, pre_save_label
-	# addi	t0, t0, 1
-	# addi	t2, t2, 1
-	# beq	t1, t3, check_label
-	# bne	t2, zero, reset_word
-replace_label:
-	# Kod procedury bêdzie tutaj
-# Koniec niewykorzystywanego fragmentu
+	# SprawdŸ, czy s³owo jest zdefiniowan¹ etykiet¹
+	lbu	t1, (t0)
+	lbu	t3, (t2)
+	beqz	t1, put_word
+	addi	t0, t0, 1
+	addi	t2, t2, 1
+	beq	t3, t4, put_line_number
+	beq	t1, t3, check_label
+next_label:
+	lbu	t1, (t0)
+	addi	t0, t0, 1
+	bne	t1, t6, next_label
+	b	check_label
 pre_save_label:
 	# Dodaj nulla na koniec s³owa w buforze
 	sb	zero, -1(t2)
@@ -226,23 +233,60 @@ put_label:
 	sb	t1, -1(t0)	# Dopisanie dwukropka
 	mv	s9, t0	# Zapamiêtaj adres buforu wyjœciowego
 	mv	t0, s11	# Przywróæ adres buforu wejœciowego
+	li	s8, 0	# Resetowanie d³ugoœci s³owa
 	b	getc
+put_word:
+	# Zapisz s³owo do bufora wyjœciowego
+	mv	t0, s9	# Za³aduj adres bufora wyjœciowego
+	la	t2, word_buf
+put_word_loop:
+	lbu	t3, (t2)
+	sb	t3, (t0)
+	addi	t0, t0, 1
+	addi	t2, t2, 1
+	bnez	t3, put_word_loop
+	mv	t2, s11	# Za³aduj adres buforu wejœciowego
+	lbu	t1, -1(t2)
+	sb	t1, -1(t0)	# Zapisz znak po s³owie
+	mv	s9, t0	# Zapisz adres bufora wyjœciowego
+	mv	t0, s11	# Za³aduj adres buforu wejœciowego
+	li	s8, 0	# Resetowanie d³ugoœci s³owa
+	b	reset_word_buf_position
+put_line_number:
+	# Zapisz numer linijki etykiety do bufora wyjœciowego
+	mv	t2, s9	# Za³aduj adres bufora wyjœciowego
+put_line_number_loop:
+	li	t3, ' '
+	lbu	t1, (t0)
+	sb	t1, (t2)
+	addi	t0, t0, 1
+	addi	t2, t2, 1
+	bne	t1, t3, put_line_number_loop
+	mv	t0, s11	# Za³aduj adres buforu wejœciowego
+	lbu	t1, -1(t0)
+	sb	t1, -1(t2)	# Zapisz znak po s³owie
+	mv	s9, t2	# Zapisz adres bufora wyjœciowego
+	li	s8, 0	# Resetowanie d³ugoœci s³owa
+	b	reset_word_buf_position
 put_space:
-	mv	t0, s9	# Za³aduj adres buforu wyjœciowego
+	# Zapisz spacjê do bufora wyjœciowego
+	mv	t0, s9	# Za³aduj adres bufora wyjœciowego
 	li	t2, ' '
 	sb	t2, (t0)	# Dopisz spacjê
 	addi	t0, t0, 1
-	mv	s9, t0	# Zapamiêtaj adres buforu wyjœciowego
-	mv	t0, s11	# Przywróæ adres buforu wejœciowego
+	mv	s9, t0	# Zapamiêtaj adres bufora wyjœciowego
+	mv	t0, s11	# Przywróæ adres bufora wejœciowego
+	li	s8, 0	# Resetowanie d³ugoœci s³owa
 	b	reset_word_buf_position
 put_new_line:
-	mv	t0, s9	# Za³aduj adres buforu wyjœciowego
+	# Zapisz znak nowej linii do bufora wyjœciowego
+	mv	t0, s9	# Za³aduj adres bufora wyjœciowego
 	li	t2, '\n'
 	sb	t2, (t0)	# Dopisz znak nowej linii
 	addi	t0, t0, 1
-	mv	s9, t0	# Zapamiêtaj adres buforu wyjœciowego
-	mv	t0, s11	# Przywróæ adres buforu wejœciowego
-	addi	a5, a5, 1
+	mv	s9, t0	# Zapamiêtaj adres bufora wyjœciowego
+	mv	t0, s11	# Przywróæ adres bufora wejœciowego
+	li	s8, 0	# Resetowanie d³ugoœci s³owa
 	b	reset_word_buf_position
 end_of_file:
 	# Kod procedury bêdzie tutaj
