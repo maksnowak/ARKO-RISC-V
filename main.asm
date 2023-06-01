@@ -101,6 +101,8 @@ getc:
 	# £adowanie do buforu fragmentu pliku o wielkoœci okreœlonej w sta³ej FILE_BUFSIZE
 	# Jeœli nie zosta³y odczytane wszystkie znaki z buforu, czytaj nastêpny znak
 	bne	a3, a4, nextchar
+	# Jeœli liczba wczeœniej wczytanych znaków by³a ró¿na od 0, zlicz liczbê znaków w buforze wyjœciowym, a nastêpnie zapisz go do pliku
+	bnez	a4, count_result
 	# £adowanie do buforu
 	mv	a0, s0
 	la	a1, file_buf
@@ -296,8 +298,35 @@ put_new_line:
 	mv	t0, s11	# Przywróæ adres bufora wejœciowego
 	li	s8, 0	# Resetowanie d³ugoœci s³owa
 	b	reset_word_buf_position
+count_result:
+	# Zlicz liczbê znaków w buforze wyjœciowym
+	li	a2, 0	# Licznik znajduje siê w rejestrze a2, aby mo¿na by³o go od razu u¿yæ do zapisania zawartoœci bufora do pliku
+	la	t0, result_buf
+count_loop:
+	# Iteruj, dopóki nie bêdzie nulla
+	lbu	t1, (t0)
+	addi	t0, t0, 1
+	addi	a2, a2, 1
+	bnez	t1, count_loop
+	addi	a2, a2, -1	# Usuñ koñcowego nulla z licznika
+putc:
+	# Zapisz bufor wyjœciowy do pliku
+	mv	a0, s1
+	la	a1, result_buf
+	li	a7, WRITE
+	ecall
+	# Zresetowanie licznika odczytanych znaków
+	li	a3, 0
+	li	a4, 0
+	b	getc	# Za³aduj kolejn¹ czêœæ pliku
 end_of_file:
-	# Kod procedury bêdzie tutaj
+	# Zamkniêcie wszystkich plików
+	mv	a0, s0
+	li	a7, CLOSE
+	ecall
+	mv	a0, s1
+	li	a7, CLOSE
+	ecall
 fin:
 	# Zakoñczenie programu
 	li	a7, SYS_EXIT0
