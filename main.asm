@@ -199,10 +199,14 @@ add_semicolon:
 	sb	t4, -1(t0)
 	mv	s10, t0	# Zapamiêtanie adresu do powrotu przy odwracaniu numeru linijki
 	mv	t4, a5
+	# Przygotowanie do odwracania numeru linijki
+	li	t2, 0	# D³ugoœæ numeru linijki
+	li	t3, 1
 add_line_number:
 	# Dodanie numeru linijki pliku (numer bêdzie zapisany odwrotnie - cyfra jednoœci po lewej)
 	li	t6, 10	# Dzielnik
 	beqz	t4, pre_reverse	# Jeœli dzielna bêdzie równa zero, odwróæ numer linijki
+	addi	t2, t2, 1
 	remu	t5, t4, t6	# Zapisz pojedyncz¹ cyfrê z linijki do rejestru
 	divu	t4, t4, t6	# Dzielenie ca³kowite przez 10
 add_character:
@@ -212,6 +216,9 @@ add_character:
 	b	add_line_number
 pre_reverse: 
 	addi	t0, t0, -1
+	# Przeniesienie wartoœci rejestrów do innych, ju¿ nie u¿ywanych
+	mv	t4, t2
+	mv	t5, t3
 reverse:
 	# Odwracanie numeru linijki do poprawnej wartoœci
 	mv	t2, s10
@@ -222,10 +229,11 @@ reverse:
 	sb	t3, (t0)
 	addi	t0, t0, -1
 	addi	t2, t2, 1
-	ble	t2, t0, reverse	# Jeœli rejestr id¹cy do przodu wskazuje na adres mniejszy ni¿ rejestr id¹cy do ty³u, kontynnuj zamianê miejscami 
+	ble	t2, t0, reverse	# Jeœli rejestr id¹cy do przodu wskazuje na adres mniejszy ni¿ rejestr id¹cy do ty³u, kontynnuj zamianê miejscami
+	beq	t4, t5, post_reverse	# Jeœli numer linijki sk³ada siê tylko z jednej cyfry, pomiñ przesuwanie wskaŸnika bufora o 1
+	addi	t2, t2, 1
 post_reverse:
 	# Dodaj znak spacji na koñcu zapisanego ci¹gu etykiety i numeru linijki
-	addi	t2, t2, 1
 	li	t3, ' '
 	sb	t3, (t2)
 	# Przygotuj rejestry do zapisywania do buforu wyjœciowego
