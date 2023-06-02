@@ -97,6 +97,9 @@ open_output:
 	li	a7, OPEN
 	ecall
 	mv	s1, a0	# Zapisz deskryptor pliku wyjœciowego do nowego rejestru
+	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek - musi siê to wydarzyæ przed procedur¹ getc, aby zapobiec niepoprawnemu wykonaniu w sytuacji,
+	# gdy s³owo zostanie rozdzielone przez ograniczenie w rozmiarze bufora
+	la	t2, word_buf
 getc:
 	# £adowanie do buforu fragmentu pliku o wielkoœci okreœlonej w sta³ej FILE_BUFSIZE
 	# Jeœli nie zosta³y odczytane wszystkie znaki z buforu, czytaj nastêpny znak
@@ -118,8 +121,7 @@ getc:
 	la	s9, result_buf	# Ustaw wskaŸnik na bufor wyjœciowy
 	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek
 	la	t0, file_buf
-	# Ustawianie wskaŸnika na bufor pliku na jego koniec
-	la	t2, word_buf
+	b	nextchar
 reset_word_buf_position:
 	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek
 	la	t2, word_buf
@@ -326,6 +328,20 @@ putc:
 	# Zresetowanie licznika odczytanych znaków
 	li	a3, 0
 	li	a4, 0
+clear:
+	# Czyszczenie zawartoœci buforów wejœciowego i wyjœciowego
+	la	t0, file_buf
+	la	t1, result_buf
+	li	t3, 0
+	li	t4, FILE_BUFSIZE
+clear_loop:
+	# Zamiana wszystkich znaków na nulle
+	sb	zero, (t0)
+	sb	zero, (t1)
+	addi	t0, t0, 1
+	addi	t1, t1, 1
+	addi	t3, t3, 1
+	bne	t3, t4, clear_loop
 	b	getc	# Za³aduj kolejn¹ czêœæ pliku
 end_of_file:
 	# Zamkniêcie wszystkich plików
