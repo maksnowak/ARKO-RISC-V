@@ -182,6 +182,43 @@ pre_save_label:
 	# Dodaj nulla na koniec s³owa w buforze
 	sb	zero, -1(t2)
 	beqz	a6, put_word	# Jeœli potencjalna etykieta nie zaczyna siê w pierwszej kolumnie tekstu, przepisz j¹ jako zwyk³e s³owo
+	# SprawdŸ, czy etykieta jest wa¿nym identyfikatorem jêzyka C
+	la	t2, word_buf
+	lbu	t1, (t2)
+	# Pierwszy znak musi byæ liter¹ lub znakiem podkreœlenia
+	li	t3, 'A'
+	blt	t1, t3, put_word
+	li	t3, 'Z'
+	ble	t1, t3, adv_char
+	li	t3, '_'
+	beq	t1, t3, adv_char
+	li	t3, 'a'
+	blt	t1, t3, put_word
+	li	t3, 'z'
+	bgt	t1, t3, put_word
+adv_char:
+	# Inkrementacja wskaŸnika na bufor s³owa
+	addi	t2, t2, 1
+	lbu	t1, (t2)
+	beqz	t1, prepare_loop	# Jeœli zostanie znalezione zero, jest to koniec s³owa i jest to poprawna etykieta
+is_label_correct:
+	# Kolejne znaki mog¹ zawieraæ te¿ cyfry
+	li	t3, '0'
+	blt	t1, t3, put_word
+	li	t3, '9'
+	ble	t1, t3, adv_char
+	li	t3, 'A'
+	blt	t1, t3, put_word
+	li	t3, 'Z'
+	ble	t1, t3, adv_char
+	li	t3, '_'
+	beq	t1, t3, adv_char
+	li	t3, 'a'
+	blt	t1, t3, put_word
+	li	t3, 'z'
+	blt	t1, t3, adv_char
+	b	put_word
+prepare_loop:
 	# Ustaw wskaŸnik na bufor etykiet
 	la	t0, label_buf
 	# Przesuñ wskaŸnik bufora s³owa na pocz¹tek
