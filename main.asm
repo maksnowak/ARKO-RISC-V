@@ -100,6 +100,8 @@ open_output:
 	# Ustawianie wskaŸnika na bufor pliku na jego pocz¹tek - musi siê to wydarzyæ przed procedur¹ getc, aby zapobiec niepoprawnemu wykonaniu w sytuacji,
 	# gdy s³owo zostanie rozdzielone przez ograniczenie w rozmiarze bufora
 	la	t2, word_buf
+	# Ustawienie flagi informuj¹cej, ¿e przeszukiwane s³owo zaczyna siê w pierwszej kolumnie tekstu - podobnie jak wskaŸnik na bufor s³owa, musi to siê znaleŸæ przed getc
+	li	a6, 1
 getc:
 	# £adowanie do buforu fragmentu pliku o wielkoœci okreœlonej w sta³ej FILE_BUFSIZE
 	# Jeœli nie zosta³y odczytane wszystkie znaki z buforu, czytaj nastêpny znak
@@ -179,6 +181,7 @@ verify_label:
 pre_save_label:
 	# Dodaj nulla na koniec s³owa w buforze
 	sb	zero, -1(t2)
+	beqz	a6, put_word	# Jeœli potencjalna etykieta nie zaczyna siê w pierwszej kolumnie tekstu, przepisz j¹ jako zwyk³e s³owo
 	# Ustaw wskaŸnik na bufor etykiet
 	la	t0, label_buf
 	# Przesuñ wskaŸnik bufora s³owa na pocz¹tek
@@ -253,6 +256,7 @@ put_label:
 	mv	s9, t0	# Zapamiêtaj adres buforu wyjœciowego
 	mv	t0, s11	# Przywróæ adres buforu wejœciowego
 	li	s8, 0	# Resetowanie d³ugoœci s³owa
+	li	a6, 0	# Ustawienie flagi - nastêpne s³owo nie zaczyna siê od pierwszej kolumny
 	b	getc
 put_word:
 	# Zapisz s³owo do bufora wyjœciowego
@@ -270,6 +274,9 @@ put_word_loop:
 	mv	s9, t0	# Zapisz adres bufora wyjœciowego
 	mv	t0, s11	# Za³aduj adres buforu wejœciowego
 	li	s8, 0	# Resetowanie d³ugoœci s³owa
+	li	t6, '\n'
+	beq	t1, t6, set_column_flag
+	li	a6, 0	# Ustawienie flagi - nastêpne s³owo nie zaczyna siê od pierwszej kolumny
 	b	reset_word_buf_position
 put_line_number:
 	# Zapisz numer linijki etykiety do bufora wyjœciowego
@@ -287,6 +294,9 @@ put_line_number_loop:
 	sb	t1, -1(t2)	# Zapisz znak po s³owie
 	mv	s9, t2	# Zapisz adres bufora wyjœciowego
 	li	s8, 0	# Resetowanie d³ugoœci s³owa
+	li	t6, '\n'
+	beq	t1, t6, set_column_flag
+	li	a6, 0	# Ustawienie flagi - nastêpne s³owo nie zaczyna siê od pierwszej kolumny
 	b	reset_word_buf_position
 put_space:
 	# Zapisz spacjê do bufora wyjœciowego
@@ -297,6 +307,7 @@ put_space:
 	mv	s9, t0	# Zapamiêtaj adres bufora wyjœciowego
 	mv	t0, s11	# Przywróæ adres bufora wejœciowego
 	li	s8, 0	# Resetowanie d³ugoœci s³owa
+	li	a6, 0	# Ustawienie flagi - nastêpne s³owo nie zaczyna siê od pierwszej kolumny
 	b	reset_word_buf_position
 put_new_line:
 	# Zapisz znak nowej linii do bufora wyjœciowego
@@ -307,6 +318,8 @@ put_new_line:
 	mv	s9, t0	# Zapamiêtaj adres bufora wyjœciowego
 	mv	t0, s11	# Przywróæ adres bufora wejœciowego
 	li	s8, 0	# Resetowanie d³ugoœci s³owa
+set_column_flag:
+	li	a6, 1	# Ustawienie flagi - nastêpne s³owo zaczyna siê od pierwszej kolumny
 	b	reset_word_buf_position
 count_result:
 	# Zlicz liczbê znaków w buforze wyjœciowym
