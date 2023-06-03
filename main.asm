@@ -137,6 +137,7 @@ nextchar:
 	lbu	t1, (t0)
 	addi	t0, t0, 1
 	addi	a3, a3, 1
+	mv	s7, t1	# Zapisz ostatnio wczytany znak do rejestru, konieczne do sytuacji, gdy plik nie koñczy siê pustym znakiem
 	mv	s11, t0	# Zapamiêtaj pozycjê w buforze wejœciowym
 	beq	t1, t6, verify_space	# Jeœli znak jest spacj¹, dodaj go do buforu wyjœciowego
 	beq	t1, t5, verify_new_line	# To samo dla znaku nowej linii
@@ -370,6 +371,9 @@ count_loop:
 	bnez	t1, count_loop
 	addi	a2, a2, -1	# Usuñ koñcowego nulla z licznika
 putc:
+	# Zapisz nulla w miejscu wskazywanym przez bufor s³owa
+	# Konieczne do poprawnej obs³ugi sytuacji, gdy plik nie koñczy siê pustym znakiem
+	sb	zero, (t2)
 	# Zapisz bufor wyjœciowy do pliku
 	mv	a0, s1
 	la	a1, result_buf
@@ -392,8 +396,26 @@ clear_loop:
 	addi	t1, t1, 1
 	addi	t3, t3, 1
 	bne	t3, t4, clear_loop
+	bnez	s6, close_files	# Jeœli flaga dopisania ostatniego s³owa ró¿na od 0, nie przechodŸ do getc
 	b	getc	# Za³aduj kolejn¹ czêœæ pliku
 end_of_file:
+	li	t4, ':'
+	li	t5, ' '
+	li	t6, '\n'
+	beq	s7, t4, close_files
+	beq	s7, t5, close_files
+	beq	s7, t6, close_files
+	# Jeœli plik nie zawiera pustego znaku na koñcu (lub dwukropka, wtedy etykieta zosta³a ju¿ przetowrzona i dodana), nale¿y przetworzyæ ostatnie s³owo
+	# Wartoœci wczytanych/odczytanych znaków ró¿ne od 0, aby mo¿na by³o zapisaæ ostatnie s³owo do bufora
+	li	a3, 1
+	li	a4, 1
+	li	s6, 1	# Flaga dopisania ostatniego s³owa
+	# Ustawienie potrzbenych wskaŸników na pocz¹tki buforów
+	la	s9, result_buf
+	la	t0, label_buf
+	la	t2, word_buf
+	b	check_label
+close_files:
 	# Zamkniêcie wszystkich plików
 	mv	a0, s0
 	li	a7, CLOSE
@@ -413,4 +435,3 @@ error_fin:
 	# Zakoñczenie programu
 	li	a7, SYS_EXIT0
 	ecall
-
