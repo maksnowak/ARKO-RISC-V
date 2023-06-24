@@ -1,4 +1,4 @@
-# [PL] Arhictektura Komputerów - Projekt RISC-V
+# [PL] Architektura Komputerów - Projekt RISC-V
 
 To repozytorium zawiera projekt napisany w asemblerze RISC-V, będący jednym z zadań na przedmiocie Architektura Komputerów na Wydziale Elektroniki i Technik Informacyjnych Politechniki Warszawskiej.
 
